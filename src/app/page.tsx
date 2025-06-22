@@ -1,5 +1,5 @@
 // app/page.tsx
-"use client" // This directive is crucial for using React Hooks and client-side functionalities
+"use client" // هذا التوجيه ضروري لاستخدام React Hooks والوظائف من جانب العميل
 
 import React, { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -11,7 +11,7 @@ import Clock from '../components/Clock';
 import { Plus, Search } from 'lucide-react';
 import { User } from '@supabase/supabase-js'; // استيراد نوع المستخدم من Supabase
 
-// Define the Todo interface to match the database columns
+// تعريف واجهة Todo لمطابقة أعمدة قاعدة البيانات
 interface Todo {
   id: string;
   user_id: string;
@@ -23,15 +23,18 @@ interface Todo {
 }
 
 export default function HomePage() {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [user, setUser] = useState<User | null>(null); // تم تغيير النوع من any إلى User | null
-  const supabase = createClientComponentClient();
-  const router = useRouter();
+  const [todos, setTodos] = useState<Todo[]>([]); // حالة لقائمة المهام
+  const [user, setUser] = useState<User | null>(null); // حالة للمستخدم الحالي
+  const supabase = createClientComponentClient(); // تهيئة عميل Supabase
+  const router = useRouter(); // تهيئة Next.js router
 
+  // حالات للتحكم في المودال
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Todo | null>(null);
-  const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
+  const [editingTask, setEditingTask] = useState<Todo | null>(null); // يخزن المهمة التي يتم تعديلها
+  const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all'); // حالة لفلترة المهام
 
+  // تأثير (Effect) لجلب معلومات المستخدم والمهام عند تحميل المكون
+  // ولإعداد مستمع Real-time
   useEffect(() => {
     const fetchUserAndTodos = async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -52,7 +55,6 @@ export default function HomePage() {
       } else {
         setTodos([]);
         router.push('/login');
-        console.log("No user logged in, redirecting to login.");
       }
     };
 
@@ -65,17 +67,23 @@ export default function HomePage() {
         { event: '*', schema: 'public', table: 'todos' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setTodos((prevTodos) => [payload.new as Todo, ...prevTodos]);
+            if (user && payload.new.user_id === user.id) {
+              setTodos((prevTodos) => [payload.new as Todo, ...prevTodos]);
+            }
           } else if (payload.eventType === 'UPDATE') {
             setTodos((prevTodos) =>
               prevTodos.map((todo) =>
-                todo.id === (payload.old as Todo).id ? (payload.new as Todo) : todo
+                (user && todo.id === (payload.old as Todo).id && (payload.new as Todo).user_id === user.id)
+                  ? (payload.new as Todo)
+                  : todo
               )
             );
           } else if (payload.eventType === 'DELETE') {
-            setTodos((prevTodos) =>
-              prevTodos.filter((todo) => todo.id !== (payload.old as Todo).id)
-            );
+            if (user && (payload.old as Todo).user_id === user.id) {
+              setTodos((prevTodos) =>
+                prevTodos.filter((todo) => todo.id !== (payload.old as Todo).id)
+              );
+            }
           }
         }
       )
@@ -84,26 +92,45 @@ export default function HomePage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, router]);
+  }, [supabase, router, user]);
 
+  // دالة لتبديل حالة إنجاز المهمة
   const handleToggleComplete = async (id: string) => {
     const todoToUpdate = todos.find(todo => todo.id === id);
-    if (!todoToUpdate) return;
+    if (!todoToUpdate) {
+      return;
+    }
+    if (!user || todoToUpdate.user_id !== user.id) {
+        return;
+    }
 
-    // تم إزالة 'data' من التفكيك هنا لأنها لم يتم استخدامها بعد ذلك
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('todos')
       .update({ is_completed: !todoToUpdate.is_completed })
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating task completion:', error);
+    } else if (!data) {
+        // No row returned, might be RLS issue or wrong ID
+        // The UI might not update if this happens, but the error is handled.
+    } else {
+        // Task updated successfully, Realtime should handle UI update.
     }
   };
 
+  // دالة لحذف مهمة
   const handleDeleteTask = async (id: string) => {
+    const todoToDelete = todos.find(todo => todo.id === id);
+    if (!todoToDelete) {
+      return;
+    }
+    if (!user || todoToDelete.user_id !== user.id) {
+        return;
+    }
+
     const { error } = await supabase
       .from('todos')
       .delete()
@@ -111,9 +138,12 @@ export default function HomePage() {
 
     if (error) {
       console.error('Error deleting task:', error);
+    } else {
+      // Task deleted successfully, Realtime should handle UI update.
     }
   };
 
+  // دالة لتسجيل خروج المستخدم
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -123,29 +153,44 @@ export default function HomePage() {
     }
   };
 
+  // دالة لفتح المودال لإضافة مهمة جديدة
   const openAddTaskModal = () => {
     setEditingTask(null);
     setIsModalOpen(true);
   };
 
+  // دالة لفتح المودال لتعديل مهمة موجودة
   const openEditTaskModal = (id: string) => {
     const task = todos.find(t => t.id === id);
     if (task) {
+      if (!user || task.user_id !== user.id) {
+        return;
+      }
       setEditingTask(task);
       setIsModalOpen(true);
     }
   };
 
+  // دالة لإغلاق المودال
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingTask(null);
   };
 
+  // دالة لحفظ مهمة جديدة أو تحديث مهمة موجودة
   const handleSaveTask = async (taskData: Omit<Todo, 'id' | 'inserted_at' | 'user_id'> & { id?: string }) => {
-    if (!user) return;
+    if (!user) {
+      console.error('handleSaveTask: No user logged in.'); // Keep this one for critical auth check
+      return;
+    }
 
-    if (taskData.id) {
-      const { error } = await supabase
+    if (taskData.id) { // إذا كان هناك ID، فهذا يعني عملية تحديث
+      const todoToUpdate = todos.find(todo => todo.id === taskData.id);
+      if (!todoToUpdate || todoToUpdate.user_id !== user.id) {
+          return;
+      }
+
+      const { data, error } = await supabase
         .from('todos')
         .update({
           task: taskData.task,
@@ -153,10 +198,18 @@ export default function HomePage() {
           priority: taskData.priority,
           is_completed: taskData.is_completed,
         })
-        .eq('id', taskData.id);
+        .eq('id', taskData.id)
+        .select()
+        .maybeSingle();
 
-      if (error) console.error('Error updating task:', error);
-    } else {
+      if (error) {
+        console.error('Error updating task:', error);
+      } else if (!data) {
+          // Update completed, but no row was returned.
+      } else {
+        // Task updated successfully, Realtime should handle UI update.
+      }
+    } else { // إذا لم يكن هناك ID، فهذا يعني عملية إضافة مهمة جديدة
       const { error } = await supabase
         .from('todos')
         .insert({
@@ -167,11 +220,16 @@ export default function HomePage() {
           priority: taskData.priority,
         });
 
-      if (error) console.error('Error adding new task:', error);
+      if (error) {
+        console.error('Error adding new task:', error);
+      } else {
+        // New task added successfully, Realtime should handle UI update.
+      }
     }
     closeModal();
   };
 
+  // دالة لفلترة المهام بناءً على حالة الفلتر الحالية
   const getFilteredTodos = () => {
     if (filter === 'completed') {
       return todos.filter(todo => todo.is_completed);
@@ -179,7 +237,7 @@ export default function HomePage() {
     if (filter === 'pending') {
       return todos.filter(todo => !todo.is_completed);
     }
-    return todos;
+    return todos; // الفلتر 'all' يعرض جميع المهام
   };
 
   return (
@@ -192,7 +250,7 @@ export default function HomePage() {
       />
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        {/* Clock component */}
+        {/* مكون الساعة */}
         <div className="flex justify-center items-center mb-6 md:mb-10">
           <Clock />
         </div>
@@ -201,7 +259,7 @@ export default function HomePage() {
           مهامك اليومية
         </h1>
 
-        {/* Search and Filter Bar */}
+        {/* شريط البحث والفلترة */}
         <div className="flex flex-col md:flex-row items-center justify-between mb-8 space-y-4 md:space-y-0 md:space-x-4">
           <div className="relative flex-grow w-full md:w-auto">
             <input
@@ -213,7 +271,7 @@ export default function HomePage() {
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
-          {/* Filter buttons */}
+          {/* أزرار الفلترة */}
           <div className="flex space-x-2 w-full md:w-auto justify-center">
             <button
               onClick={() => setFilter('all')}
@@ -242,7 +300,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Task List Display */}
+        {/* عرض قائمة المهام */}
         <div className="space-y-4">
           {getFilteredTodos().length === 0 ? (
             <p className="text-center text-gray-500 dark:text-gray-400 text-lg py-10">
@@ -265,7 +323,7 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Floating Action Button for adding new tasks */}
+        {/* زر الإجراء العائم لإضافة مهام جديدة */}
         <div className="fixed bottom-6 right-6 z-40">
           <button
             onClick={openAddTaskModal}
@@ -276,7 +334,7 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Task Modal (Add/Edit) */}
+        {/* مودال المهام (إضافة/تعديل) */}
         {isModalOpen && (
           <TaskModal
             task={editingTask}
