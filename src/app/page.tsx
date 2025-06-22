@@ -1,5 +1,5 @@
 // app/page.tsx
-"use client"
+"use client" // This directive is crucial for using React Hooks and client-side functionalities
 
 import React, { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -9,7 +9,9 @@ import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import Clock from '../components/Clock';
 import { Plus, Search } from 'lucide-react';
+import { User } from '@supabase/supabase-js'; // استيراد نوع المستخدم من Supabase
 
+// Define the Todo interface to match the database columns
 interface Todo {
   id: string;
   user_id: string;
@@ -22,7 +24,7 @@ interface Todo {
 
 export default function HomePage() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null); // تم تغيير النوع من any إلى User | null
   const supabase = createClientComponentClient();
   const router = useRouter();
 
@@ -88,7 +90,8 @@ export default function HomePage() {
     const todoToUpdate = todos.find(todo => todo.id === id);
     if (!todoToUpdate) return;
 
-    const { data, error } = await supabase
+    // تم إزالة 'data' من التفكيك هنا لأنها لم يتم استخدامها بعد ذلك
+    const { error } = await supabase
       .from('todos')
       .update({ is_completed: !todoToUpdate.is_completed })
       .eq('id', id)
@@ -180,7 +183,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-blue-50 to-purple-50 text-gray-800 dark:text-white transition-colors duration-300 ease-in-out"> {/* Light, vibrant gradient background */}
+    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-blue-50 to-purple-50 text-gray-800 dark:text-white transition-colors duration-300 ease-in-out">
       <Sidebar
         userEmail={user?.email}
         onLogout={handleLogout}
@@ -194,7 +197,7 @@ export default function HomePage() {
           <Clock />
         </div>
 
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-8 md:mb-12 text-center md:text-left text-indigo-700 dark:text-indigo-400"> {/* More prominent title */}
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-8 md:mb-12 text-center md:text-left text-indigo-700 dark:text-indigo-400">
           مهامك اليومية
         </h1>
 
@@ -207,7 +210,7 @@ export default function HomePage() {
               className="w-full pl-10 pr-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-800 placeholder-gray-400 shadow-sm
                          dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:placeholder-gray-500
                          focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors duration-200"
-            /> {/* Brighter inputs with subtle shadow */}
+            />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
           {/* Filter buttons */}
@@ -217,7 +220,7 @@ export default function HomePage() {
               className={`px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-300 ease-in-out
                           ${filter === 'all' ? 'bg-indigo-500 text-white transform scale-105' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
                           dark:${filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-            > {/* Rounded, more vibrant buttons with hover/active states */}
+            >
               الكل
             </button>
             <button
@@ -268,7 +271,7 @@ export default function HomePage() {
             onClick={openAddTaskModal}
             className="w-16 h-16 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110"
             title="إضافة مهمة جديدة"
-          > {/* Vibrant gradient, larger icon, shadow, transform */}
+          >
             <Plus className="h-8 w-8" />
           </button>
         </div>
