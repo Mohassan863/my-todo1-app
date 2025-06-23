@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client" // هذا التوجيه ضروري لاستخدام React Hooks والوظائف من جانب العميل
 
 import React, { useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import Sidebar from '../components/Sidebar';
 import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import Clock from '../components/Clock';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Menu } from 'lucide-react'; // أضفت Menu هنا
 import { User } from '@supabase/supabase-js'; // استيراد نوع المستخدم من Supabase
 
 // تعريف واجهة Todo لمطابقة أعمدة قاعدة البيانات
@@ -32,6 +31,9 @@ export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Todo | null>(null); // يخزن المهمة التي يتم تعديلها
   const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all'); // حالة لفلترة المهام
+
+  // حالة لفتح وإغلاق الـ Sidebar في الموبايل
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // تأثير (Effect) لجلب معلومات المستخدم والمهام عند تحميل المكون
   // ولإعداد مستمع Real-time
@@ -113,11 +115,6 @@ export default function HomePage() {
 
     if (error) {
       console.error('Error updating task completion:', error);
-    } else if (!data) {
-        // No row returned, might be RLS issue or wrong ID
-        // The UI might not update if this happens, but the error is handled.
-    } else {
-        // Task updated successfully, Realtime should handle UI update.
     }
   };
 
@@ -138,8 +135,6 @@ export default function HomePage() {
 
     if (error) {
       console.error('Error deleting task:', error);
-    } else {
-      // Task deleted successfully, Realtime should handle UI update.
     }
   };
 
@@ -180,11 +175,11 @@ export default function HomePage() {
   // دالة لحفظ مهمة جديدة أو تحديث مهمة موجودة
   const handleSaveTask = async (taskData: Omit<Todo, 'id' | 'inserted_at' | 'user_id'> & { id?: string }) => {
     if (!user) {
-      console.error('handleSaveTask: No user logged in.'); // Keep this one for critical auth check
+      console.error('handleSaveTask: No user logged in.');
       return;
     }
 
-    if (taskData.id) { // إذا كان هناك ID، فهذا يعني عملية تحديث
+    if (taskData.id) {
       const todoToUpdate = todos.find(todo => todo.id === taskData.id);
       if (!todoToUpdate || todoToUpdate.user_id !== user.id) {
           return;
@@ -204,12 +199,8 @@ export default function HomePage() {
 
       if (error) {
         console.error('Error updating task:', error);
-      } else if (!data) {
-          // Update completed, but no row was returned.
-      } else {
-        // Task updated successfully, Realtime should handle UI update.
       }
-    } else { // إذا لم يكن هناك ID، فهذا يعني عملية إضافة مهمة جديدة
+    } else {
       const { error } = await supabase
         .from('todos')
         .insert({
@@ -222,8 +213,6 @@ export default function HomePage() {
 
       if (error) {
         console.error('Error adding new task:', error);
-      } else {
-        // New task added successfully, Realtime should handle UI update.
       }
     }
     closeModal();
@@ -237,17 +226,61 @@ export default function HomePage() {
     if (filter === 'pending') {
       return todos.filter(todo => !todo.is_completed);
     }
-    return todos; // الفلتر 'all' يعرض جميع المهام
+    return todos;
   };
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-blue-50 to-purple-50 text-gray-800 dark:text-white transition-colors duration-300 ease-in-out">
-      <Sidebar
-        userEmail={user?.email}
-        onLogout={handleLogout}
-        onNewTaskClick={openAddTaskModal}
-        onFilterChange={setFilter}
-      />
+      
+      {/* Sidebar يظهر دائماً في الديسكتوب، وفي الموبايل يظهر حسب الحالة */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden" onClick={() => setSidebarOpen(false)}></div>
+      )}
+      <div
+        className={`
+          fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-900 shadow-lg z-50
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0 md:static md:shadow-none
+        `}
+      >
+        <Sidebar
+          userEmail={user?.email}
+          onLogout={() => {
+            handleLogout();
+            setSidebarOpen(false);
+          }}
+          onNewTaskClick={() => {
+            openAddTaskModal();
+            setSidebarOpen(false);
+          }}
+          onFilterChange={(filterValue) => {
+            setFilter(filterValue);
+            setSidebarOpen(false);
+          }}
+        />
+        {/* زر إغلاق في الموبايل */}
+        {sidebarOpen && (
+          <button
+            className="md:hidden absolute top-4 right-4 p-2 rounded-md bg-gray-300 dark:bg-gray-700"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="إغلاق القائمة"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* زرار فتح القائمة في الموبايل يظهر فقط لما sidebarOpen false */}
+      {!sidebarOpen && (
+        <button
+          className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-indigo-600 text-white shadow-md"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="فتح القائمة"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      )}
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         {/* مكون الساعة */}
