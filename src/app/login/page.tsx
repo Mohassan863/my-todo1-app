@@ -27,8 +27,12 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMsg(null);
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    // Removed unused `data` variable
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
     setLoading(false);
+
     if (error) {
       setErrorMsg(error.message);
     } else {
@@ -44,73 +48,73 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-100 to-fuchsia-100 p-6">
-      <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-lg border border-indigo-200">
-        <h1 className="text-4xl font-extrabold mb-8 text-center text-indigo-800">تسجيل الدخول</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-6">
+      <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-lg border border-gray-200">
+        <h1 className="text-3xl font-bold mb-8 text-center text-gray-900">تسجيل الدخول</h1>
 
         {errorMsg && (
-          <div className="mb-6 text-red-800 bg-red-100 p-4 rounded-lg">
+          <div className="mb-6 text-red-700 bg-red-100 p-4 rounded-lg">
             {errorMsg}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-indigo-700 mb-2 font-medium">البريد الإلكتروني</label>
+            <label htmlFor="email" className="block text-gray-700 mb-2">البريد الإلكتروني</label>
             <input
               id="email"
               type="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-300 transition"
+              className="w-full px-5 py-3 border rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-200 transition"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-indigo-700 mb-2 font-medium">كلمة المرور</label>
+            <label htmlFor="password" className="block text-gray-700 mb-2">كلمة المرور</label>
             <input
               id="password"
               type="password"
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-300 transition"
+              className="w-full px-5 py-3 border rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-200 transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
+            className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
           >
             {loading ? "جاري تسجيل الدخول..." : "دخول"}
           </button>
         </form>
 
-        <div className="my-7 text-center text-gray-600">أو تسجيل بواسطة</div>
+        <div className="my-7 text-center text-gray-500">أو تسجيل بواسطة</div>
 
         <div className="flex flex-col gap-4">
           <button
             onClick={() => handleOAuth("google")}
-            className="flex items-center justify-center border border-gray-300 bg-white py-3 rounded-lg hover:bg-gray-50 transition"
+            className="flex items-center justify-center border py-3 rounded-lg hover:bg-gray-100 transition"
           >
             <FaGoogle className="w-5 h-5 text-red-500 ml-3" />
-            <span className="text-gray-700 font-medium">تسجيل عبر Google</span>
+            تسجيل عبر Google
           </button>
 
           <button
             onClick={() => handleOAuth("github")}
-            className="flex items-center justify-center border border-gray-300 bg-white py-3 rounded-lg hover:bg-gray-50 transition"
+            className="flex items-center justify-center border py-3 rounded-lg hover:bg-gray-100 transition"
           >
-            <FaGithub className="w-5 h-5 text-gray-800 ml-3" />
-            <span className="text-gray-700 font-medium">تسجيل عبر GitHub</span>
+            <FaGithub className="w-5 h-5 ml-3" />
+            تسجيل عبر GitHub
           </button>
         </div>
 
         <p className="mt-8 text-center text-gray-600">
           ليس لديك حساب؟{' '}
-          <a href="/signup" className="text-purple-600 font-medium hover:underline">
+          <a href="/signup" className="text-indigo-600 hover:underline">
             إنشاء حساب جديد
           </a>
         </p>
