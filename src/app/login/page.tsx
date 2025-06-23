@@ -1,9 +1,10 @@
 // app/login/page.tsx
+"use client";
 export const dynamic = "force-dynamic";
 // أو بديل:
 // export const prerender = false;
 
-"use client";
+
 
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
