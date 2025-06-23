@@ -1,4 +1,8 @@
 // app/login/page.tsx
+export const dynamic = "force-dynamic";
+// أو بديل:
+// export const prerender = false;
+
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
@@ -28,7 +32,6 @@ export default function LoginPage() {
     setErrorMsg(null);
     setLoading(true);
 
-    // Removed unused `data` variable
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     setLoading(false);
@@ -120,5 +123,4 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
-  );
-}
+);
